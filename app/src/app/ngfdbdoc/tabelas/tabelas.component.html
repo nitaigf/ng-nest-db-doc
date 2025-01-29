@@ -1,0 +1,343 @@
+<!-- /app/src/app/ngfdbdoc/tabelas/tabelas.component.html -->
+
+<div class="grid">
+    <div class="col-12">
+        <div class="card">
+            <!-- Toggle para escolher entre Input ou Dropdowns -->
+            <div class="grid">
+                <h4 class="col">Tabelas do banco de dados</h4>
+                <div class="col flex flex-col gap-2">
+                    <p-checkbox
+                        [(ngModel)]="useDropdowns"
+                        binary="true"
+                    ></p-checkbox>
+                    <label class="pt-3">Usar Filtros Avançados</label>
+                </div>
+            </div>
+
+            <!-- Input de Tabela -->
+            <div *ngIf="!useDropdowns; else dropdownFilters">
+                <div class="formgrid grid">
+                    <p-inputgroup class="flex flex-column gap-2">
+                        <p-inputgroup
+                            class="field col flex-auto flex-column gap-2"
+                        >
+                            <label for="table_name">Tabela</label>
+                            <p-inputgroup>
+                                <input
+                                    pInputText
+                                    placeholder="Digite o nome da tabela"
+                                    id="table_name"
+                                    [(ngModel)]="searchTableName"
+                                />
+                                <p-inputgroup-addon class="ml-3 pt-4">
+                                    <p-button
+                                        type="button"
+                                        icon="pi pi-refresh"
+                                        (click)="reloadData()"
+                                    />
+                                </p-inputgroup-addon>
+                            </p-inputgroup>
+                        </p-inputgroup>
+                    </p-inputgroup>
+                </div>
+            </div>
+
+            <!-- Dropdowns -->
+            <ng-template #dropdownFilters>
+                <div class="formgrid grid">
+                    <p-inputgroup class="flex flex-row">
+                        <!-- Dropdown de Schema -->
+                        <p-inputgroup
+                            class="field col flex-auto flex-column gap-2"
+                        >
+                            <label for="schema">Schema</label>
+                            <p-dropdown
+                                [options]="schemas"
+                                [(ngModel)]="selectedSchema"
+                                (onChange)="filterModules()"
+                                placeholder="Selecione um Schema"
+                            >
+                            </p-dropdown>
+                        </p-inputgroup>
+
+                        <!-- Dropdown de Módulo -->
+                        <p-inputgroup
+                            class="field col flex-auto flex-column gap-2"
+                        >
+                            <label for="module">Módulo</label>
+                            <p-dropdown
+                                [options]="filteredModules"
+                                [(ngModel)]="selectedModule"
+                                (onChange)="filterTables()"
+                                placeholder="Selecione um Módulo"
+                                [disabled]="!selectedSchema"
+                            >
+                            </p-dropdown>
+                        </p-inputgroup>
+
+                        <!-- Dropdown de Tabela -->
+                        <p-inputgroup
+                            class="field col flex-auto flex-column gap-2"
+                        >
+                            <label for="table">Tabela</label>
+                            <p-dropdown
+                                [options]="filteredTables"
+                                [(ngModel)]="searchTableName"
+                                placeholder="Selecione uma Tabela"
+                                [disabled]="!selectedModule"
+                            >
+                            </p-dropdown>
+                        </p-inputgroup>
+
+                        <p-inputgroup-addon class="pt-5">
+                            <p-button
+                                type="button"
+                                icon="pi pi-refresh"
+                                (click)="reloadData()"
+                            />
+                        </p-inputgroup-addon>
+                    </p-inputgroup>
+                </div>
+            </ng-template>
+
+            <hr />
+
+            <div class="p-4">
+                <h1 class="text-2xl font-bold mb-4">
+                    Documentação da Tabela {{ apiResponse?.tableName }}
+                </h1>
+
+                @if (apiResponse?.tableName) {
+
+                <!-- Seção de Comentário da Tabela -->
+                <div class="flex gap-3">
+                    <div class="flex-column">
+                        <h2 class="text-xl font-semibold mt-6">
+                            Comentário da Tabela
+                        </h2>
+                        <div
+                            *ngIf="
+                                apiResponse?.tableComment;
+                                else noTableComment
+                            "
+                        >
+                            <p>{{ apiResponse?.tableComment?.tableComment }}</p>
+                        </div>
+                        <ng-template #noTableComment>
+                            <p class="text-gray-500">
+                                Nenhum comentário encontrado para esta tabela.
+                            </p>
+                        </ng-template>
+                    </div>
+                    <div class="flex-column">
+                        <h2 class="text-xl font-semibold mt-6">
+                            Responsabilidade da Tabela
+                        </h2>
+                        <p>
+                            Sistema:
+                            {{
+                                apiResponse?.tableComment?.responsability
+                                    ?.system
+                                    ? "Sim"
+                                    : "Não"
+                            }}
+                        </p>
+                        <p>
+                            Usuário:
+                            {{
+                                apiResponse?.tableComment?.responsability?.user
+                                    ? "Sim"
+                                    : "Não"
+                            }}
+                        </p>
+                    </div>
+                </div>
+
+                <!-- Seção de Colunas -->
+                <div>
+                    <h2 class="text-xl font-semibold mt-6">Colunas</h2>
+                    <p-table
+                        [value]="apiResponse?.columns"
+                        [paginator]="true"
+                        [rows]="10"
+                        [responsive]="true"
+                        [loading]="loading"
+                        class="mb-6"
+                    >
+                        <ng-template pTemplate="header">
+                            <tr>
+                                <th>Nome da Coluna</th>
+                                <th>Tipo de Dado</th>
+                                <th>Comentário</th>
+                            </tr>
+                        </ng-template>
+                        <ng-template pTemplate="body" let-column>
+                            <tr>
+                                <td>{{ column.column_name }}</td>
+                                <td>{{ column.data_type }}</td>
+                                <td>
+                                    <div *ngIf="column.column_comment">
+                                        <span>{{
+                                            columnCommentTemplate(
+                                                column.column_comment
+                                            ).commentText
+                                        }}</span>
+                                        <div
+                                            *ngIf="
+                                                columnCommentTemplate(
+                                                    column.column_comment
+                                                ).sample
+                                            "
+                                        >
+                                            <hr />
+                                            <strong>Exemplo:</strong>
+                                            <pre class="surface-100">
+                                                    <code [highlight]="columnCommentTemplate(column.column_comment).sample" language="json"></code>
+                                                </pre>
+                                        </div>
+                                    </div>
+                                </td>
+                            </tr>
+                        </ng-template>
+                    </p-table>
+                </div>
+
+                <!-- Seção de Chaves Primárias -->
+                <div>
+                    <h2 class="text-xl font-semibold mt-6">Chaves Primárias</h2>
+                    <p-table
+                        [value]="apiResponse?.primaryKeys"
+                        [paginator]="true"
+                        [rows]="10"
+                        [responsive]="true"
+                        [loading]="loading"
+                        class="mb-6"
+                    >
+                        <ng-template pTemplate="header">
+                            <tr>
+                                <th>Nome da Constraint</th>
+                                <th>Colunas</th>
+                                <th>Tipos de Dados</th>
+                                <th>Comentários</th>
+                            </tr>
+                        </ng-template>
+                        <ng-template pTemplate="body" let-pk>
+                            <tr>
+                                <td>{{ pk.constraint_name }}</td>
+                                <td>{{ pk.column_names.join(", ") }}</td>
+                                <td>{{ pk.data_types.join(", ") }}</td>
+                                <td>{{ pk.column_comments.join("; ") }}</td>
+                            </tr>
+                        </ng-template>
+                    </p-table>
+                </div>
+
+                <!-- Seção de Chaves Estrangeiras -->
+                <div>
+                    <h2 class="text-xl font-semibold mt-6">
+                        Chaves Estrangeiras
+                    </h2>
+                    <p-table
+                        [value]="apiResponse?.foreignKeys"
+                        [paginator]="true"
+                        [rows]="10"
+                        [responsive]="true"
+                        [loading]="loading"
+                        class="mb-6"
+                    >
+                        <ng-template pTemplate="header">
+                            <tr>
+                                <th>Nome da Restrição</th>
+                                <th>Colunas</th>
+                                <th>Tabela Estrangeira</th>
+                                <th>Colunas Estrangeiras</th>
+                                <th>Comentário</th>
+                            </tr>
+                        </ng-template>
+                        <ng-template pTemplate="body" let-fk>
+                            <tr>
+                                <td>{{ fk.constraint_name }}</td>
+                                <td>{{ fk.column_names.join(", ") }}</td>
+                                <td>{{ fk.foreign_table_name }}</td>
+                                <td>
+                                    {{ fk.foreign_column_names.join(", ") }}
+                                </td>
+                                <td>{{ fk.constraint_comment }}</td>
+                            </tr>
+                        </ng-template>
+                    </p-table>
+                </div>
+
+                <!-- Seção de Índices -->
+                <div>
+                    <h2 class="text-xl font-semibold mt-6">Índices</h2>
+                    <p-table
+                        [value]="apiResponse?.indexes"
+                        [paginator]="true"
+                        [rows]="10"
+                        [responsive]="true"
+                        [loading]="loading"
+                        class="mb-6"
+                    >
+                        <ng-template pTemplate="header">
+                            <tr>
+                                <th>Nome do Índice</th>
+                                <th>Único</th>
+                                <th>Chave Primária</th>
+                                <th>Colunas</th>
+                                <th>Tipo de Índice</th>
+                                <th>Comentário do Índice</th>
+                            </tr>
+                        </ng-template>
+                        <ng-template pTemplate="body" let-index>
+                            <tr>
+                                <td>{{ index.index_name }}</td>
+                                <td>{{ index.is_unique ? "Sim" : "Não" }}</td>
+                                <td>{{ index.is_primary ? "Sim" : "Não" }}</td>
+                                <td>{{ index.column_names.join(", ") }}</td>
+                                <td>{{ index.index_type }}</td>
+                                <td>{{ index.index_comment }}</td>
+                            </tr>
+                        </ng-template>
+                    </p-table>
+                </div>
+
+                <!-- Seção de Restrições de Check -->
+                <div>
+                    <h2 class="text-xl font-semibold mt-6">
+                        Restrições de Check
+                    </h2>
+                    <p-table
+                        [value]="apiResponse?.checks"
+                        [paginator]="true"
+                        [rows]="10"
+                        [responsive]="true"
+                        [loading]="loading"
+                        class="mb-6"
+                    >
+                        <ng-template pTemplate="header">
+                            <tr>
+                                <th>Nome da Restrição</th>
+                                <th>Definição</th>
+                                <th>Comentário</th>
+                            </tr>
+                        </ng-template>
+                        <ng-template pTemplate="body" let-check>
+                            <tr>
+                                <td>{{ check.constraint_name }}</td>
+                                <td>{{ check.check_definition }}</td>
+                                <td>{{ check.constraint_comment }}</td>
+                            </tr>
+                        </ng-template>
+                    </p-table>
+                </div>
+                } @else {
+                <p class="text-red-500">
+                    Nenhuma tabela encontrada. ({{ searchError }})
+                </p>
+                }
+            </div>
+        </div>
+    </div>
+</div>
